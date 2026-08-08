@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>森煜教育 · ShineWood Education</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">✎</span>
+      <div>
+        <h1>森煜教育</h1>
+        <p class="sub">ShineWood Education</p>
+      </div>
+    </div>
+    <span class="hint">选中考试 → 粘贴题目与作答 → 获取评分与批注</span>
+  </header>
+
+  <div class="layout">
+    <!-- 左侧考试列表 -->
+    <aside class="sidebar">
+      <h2 class="side-title">考试类型</h2>
+      <ul id="examList" class="exam-list"></ul>
+      <div class="side-tools">
+        <button id="patternBtn" class="tool-btn">📚 小作文句型库</button>
+        <button id="bankBtn" class="tool-btn">🗂️ 雅思真题题库 2020-2026</button>
+        <button id="petBankBtn" class="tool-btn">📬 PET 真题题库</button>
+        <button id="ketBankBtn" class="tool-btn">📧 KET 真题题库</button>
+        <button id="gaokaoBankBtn" class="tool-btn">🎓 天津高考真题题库</button>
+        <button id="gaokaoBandBtn" class="tool-btn">📊 高考评分标准</button>
+        <button id="gaokaoPatternBtn" class="tool-btn">💡 高考高分句型库</button>
+        <button id="toeflBankBtn" class="tool-btn">🇺🇸 托福真题题库</button>
+        <button id="bandBtn" class="tool-btn">📖 雅思评分标准</button>
+        <button id="materialBtn" class="tool-btn">📝 写作语言素材</button>
+        <button id="cihuoBtn" class="tool-btn">🔗 雅思词伙</button>
+        <button id="simonBtn" class="tool-btn">📜 Simon 范文</button>
+        <button id="aiBtn" class="tool-btn">⚙️ AI 精批设置</button>
+      </div>
+      <p class="side-foot">列表持续扩充中 · 在此对话框告知即可加入</p>
+    </aside>
+
+    <!-- 主区域 -->
+    <main class="main">
+
+      <!-- AEAS 写作工作区（选中 AEAS 时显示） -->
+      <section id="aeasPanel" class="card aeas hidden">
+        <h3 class="sec-title">AEAS 写作工作台 <small id="aeasIntro"></small></h3>
+        <div class="aeas-bands" id="aeasBands"></div>
+        <div class="aeas-bands" id="aeasTypeChips" style="margin-top:0"></div>
+        <div id="aeasTypes" class="aeas-types"></div>
+      </section>
+
+      <section class="card composer">
+        <div class="composer-head">
+          <span id="curExam" class="cur-exam">雅思大作文</span>
+          <span id="minHint" class="min-hint"></span>
+        </div>
+        <label class="field-label">写作题目 / Prompt
+          <span id="promptHint" class="field-hint">（粘贴题目，用于审题与切题分析）</span>
+        </label>
+        <div id="promptTextWrap">
+          <textarea id="prompt" placeholder="粘贴作文题目（用于审题与切题分析）…"></textarea>
+        </div>
+        <div id="promptImageWrap" class="hidden">
+          <div class="img-prompt-bar">
+            <button id="pickImgBtn" class="tool-btn small">📁 选择图片</button>
+            <button id="galleryBtn" class="tool-btn small">🖼️ 从图库选择</button>
+            <button id="clearImgBtn" class="tool-btn small ghost">清除图片</button>
+            <input id="imgFile" type="file" accept="image/*" hidden />
+          </div>
+          <div id="promptImgBox" class="prompt-img-box">
+            <span class="img-placeholder">点击「选择图片」或「从图库选择」载入小作文题目图<br><small>支持截图/拍照上传，也可直接 Ctrl+V 粘贴图片</small></span>
+          </div>
+          <input id="imgCaption" class="img-caption" placeholder="（可选）填写图表类型或关键词，帮助切题分析，如：柱状图 · 对比 · 各国教育支出" />
+        </div>
+        <label class="field-label">你的作答 / Essay</label>
+        <textarea id="essay" placeholder="粘贴你的作答…"></textarea>
+        <div class="composer-foot">
+          <span id="wordCount" class="wc">0 词</span>
+          <span id="aiBadge" class="ai-badge">启发式模式</span>
+          <button id="analyzeBtn" class="primary-btn">开始批改</button>
+        </div>
+      </section>
+
+      <section id="result" class="result hidden">
+        <!-- 批改稿 + 批注 -->
+        <div class="card">
+          <h3 class="sec-title">批改稿 <small>悬停彩色下划线查看修改建议</small></h3>
+          <div id="annotated" class="annotated"></div>
+        </div>
+
+        <!-- 段落切题分析 -->
+        <div class="card">
+          <h3 class="sec-title">审题分析 <small>每段后中文讲解是否切题</small></h3>
+          <div id="promptAnalysis" class="prompt-analysis"></div>
+        </div>
+
+        <!-- 本题批改思路（从真题题库预载） -->
+        <div id="playbookCard" class="card hidden">
+          <h3 class="sec-title">本题批改思路 <small id="playbookSrc">来自真题题库预设</small></h3>
+          <div id="playbook" class="playbook"></div>
+        </div>
+
+        <!-- 参考评分 + 评分标准 -->
+        <div class="card">
+          <h3 class="sec-title">参考评分 <small id="scoreSub">小作文 3 分制 · 大作文 6 分制</small></h3>
+          <div id="scoreEst" class="score-est"></div>
+          <p class="personal-note">⭐ 本页所有评分、批注、用词提升均针对你这篇<b>原创作文</b>逐句/逐段生成，非统一套话。</p>
+        </div>
+
+        <!-- 参考：好词 + 评分标准 -->
+        <div class="ref-grid">
+          <div class="card ref">
+            <h3 class="sec-title">高分词组参考</h3>
+            <ul id="vocabList" class="vocab-list"></ul>
+          </div>
+          <div class="card ref">
+            <h3 class="sec-title">官方评分标准</h3>
+            <div id="bandRef" class="band-ref"></div>
+          </div>
+        </div>
+
+        <button id="resetBtn" class="ghost-btn">重新批改</button>
+      </section>
+    </main>
+  </div>
+
+  <footer class="foot">Built with WorkBuddy · 写作批改工作台</footer>
+
+  <!-- 句型库弹窗 -->
+  <div id="patternModal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>📚 小作文高分句型库 <small>综合 Simon IELTS + IELTS Liz · 来源：用户附件</small></h3>
+        <button class="modal-x" data-close="patternModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="cat-tabs" id="patternTabs"></div>
+        <div id="patternBody" class="pattern-body"></div>
+        <div class="simon-box">
+          <b>Simon 批改原则：</b>
+          <div id="simonRules" class="simon-rules"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 真题题库弹窗 -->
+  <div id="bankModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>🗂️ 雅思真题题库 2020–2026 <small id="bankCount">515 篇真题</small></h3>
+        <button class="modal-x" data-close="bankModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="bank-filter">
+          <input id="bankSearch" class="bank-search" placeholder="搜索题目 / 题型 / 话题（如：教育、曲线图、advertising）…" />
+          <select id="bankType" class="bank-select">
+            <option value="">全部题型</option>
+            <option value="Task 1">Task 1 小作文</option>
+            <option value="Task 2">Task 2 大作文</option>
+          </select>
+        </div>
+        <div id="bankList" class="bank-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PET 真题题库弹窗 -->
+  <div id="petBankModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>📬 PET 真题题库 <small id="petBankCount"></small></h3>
+        <button class="modal-x" data-close="petBankModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="bank-filter">
+          <input id="petBankSearch" class="bank-search" placeholder="搜索题目（如：camping、film、school trip）…" />
+          <select id="petBankType" class="bank-select">
+            <option value="">全部题型</option>
+            <option value="email">Part 1 · Email 邮件</option>
+            <option value="article">Part 2 · Article 议论文</option>
+            <option value="story">Part 2 · Story 记叙文</option>
+          </select>
+        </div>
+        <div id="petBankList" class="bank-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KET 真题题库弹窗 -->
+  <div id="ketBankModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>📧 KET 真题题库 <small id="ketBankCount"></small></h3>
+        <button class="modal-x" data-close="ketBankModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="bank-filter">
+          <input id="ketBankSearch" class="bank-search" placeholder="搜索题目（如：park、birthday、football）…" />
+          <select id="ketBankType" class="bank-select">
+            <option value="">全部题型</option>
+            <option value="email">Part 6 · Email 邮件</option>
+            <option value="picture">Part 7 · Picture Story 图片故事</option>
+          </select>
+        </div>
+        <div id="ketBankList" class="bank-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 天津高考真题题库弹窗 -->
+  <div id="gaokaoBankModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>🎓 天津高考英语写作真题 <small id="gaokaoBankCount"></small></h3>
+        <button class="modal-x" data-close="gaokaoBankModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="bank-filter">
+          <input id="gaokaoBankSearch" class="bank-search" placeholder="搜索题目（如：邀请信、志愿者、诗词大会）…" />
+          <select id="gaokaoBankType" class="bank-select">
+            <option value="">全部题型</option>
+            <option value="邀请信">邀请信</option>
+            <option value="回信">回信</option>
+            <option value="介绍信">介绍信</option>
+            <option value="推荐信">推荐信</option>
+            <option value="申请信">申请信</option>
+            <option value="感谢信">感谢信</option>
+            <option value="建议信">建议信</option>
+            <option value="演讲稿">演讲稿</option>
+            <option value="征文投稿">征文投稿</option>
+            <option value="论坛留言">论坛留言/跟帖</option>
+            <option value="报道">活动报道</option>
+            <option value="广播稿">广播稿</option>
+            <option value="留言">留言</option>
+            <option value="发言稿">发言稿</option>
+          </select>
+          <select id="gaokaoBankYear" class="bank-select">
+            <option value="">全部年份</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+            <option value="2021">2021</option>
+            <option value="2020">2020</option>
+            <option value="2019">2019</option>
+            <option value="2018">2018</option>
+            <option value="2017">2017</option>
+          </select>
+        </div>
+        <div id="gaokaoBankList" class="bank-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 天津高考评分标准弹窗 -->
+  <div id="gaokaoBandModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>📊 天津高考英语写作评分标准 <small>25分制 · 5档评分 · 天津考试院官方标准</small></h3>
+        <button class="modal-x" data-close="gaokaoBandModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="cat-tabs" id="gaokaoBandTabs"></div>
+        <div id="gaokaoBandBody" class="band-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 天津高考高分句型库弹窗 -->
+  <div id="gaokaoPatternModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>💡 高考高分句型库 <small>基础档 → 提升档 → 精品档 · 按段落位置分类</small></h3>
+        <button class="modal-x" data-close="gaokaoPatternModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="cat-tabs" id="gaokaoPatternTabs"></div>
+        <div id="gaokaoPatternBody" class="pattern-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 托福真题题库弹窗 -->
+  <div id="toeflBankModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>🇺🇸 托福写作真题题库 <small>2026 新制 · 学术讨论 + 邮件写作</small></h3>
+        <button class="modal-x" data-close="toeflBankModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="bank-bar">
+          <input type="text" id="toeflBankSearch" class="bank-search" placeholder="搜索题目关键词…">
+          <select id="toeflBankType" class="bank-select">
+            <option value="">全部题型</option>
+            <option value="academic">学术讨论</option>
+            <option value="email">邮件写作</option>
+          </select>
+          <span class="bank-count" id="toeflBankCount"></span>
+        </div>
+        <div class="bank-list" id="toeflBankList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 雅思评分标准弹窗 -->
+  <div id="bandModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>📖 雅思官方评分标准 <small>考官评分指南 · IELTS Liz + 官方 Band Descriptors (May 2023)</small></h3>
+        <button class="modal-x" data-close="bandModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="cat-tabs" id="bandTabs"></div>
+        <div id="bandBody" class="band-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 写作语言素材弹窗 -->
+  <div id="materialModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>📝 写作语言素材 <small>按话题分类核心词汇 · 来自《写作语言素材.docx》</small></h3>
+        <button class="modal-x" data-close="materialModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="cat-tabs" id="materialTabs"></div>
+        <div id="materialBody" class="material-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 精批设置弹窗 -->
+  <div id="aiModal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>⚙️ AI 7.5+ 语义精批 <small>接入大模型做深度批改</small></h3>
+        <button class="modal-x" data-close="aiModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="ai-note">开启后，批改会在「启发式批注」之外，调用你的大模型 API 做语义级精批（读懂逻辑、改句式、给 7.5+ 级反馈）。Key 仅保存在本机浏览器（localStorage），不会上传到任何服务器。</p>
+        <label class="ai-field">服务商（预设 Base URL）
+          <select id="aiProvider" class="ai-input">
+            <option value="deepseek">DeepSeek (https://api.deepseek.com)</option>
+            <option value="openai">OpenAI (https://api.openai.com/v1)</option>
+            <option value="moonshot">月之暗面 Kimi (https://api.moonshot.cn/v1)</option>
+            <option value="zhipu">智谱 GLM (https://open.bigmodel.cn/api/paas/v4)</option>
+            <option value="qwen">通义千问 (https://dashscope.aliyuncs.com/compatible-mode/v1)</option>
+            <option value="custom">自定义 Base URL</option>
+          </select>
+        </label>
+        <label class="ai-field" id="aiBaseWrap">自定义 Base URL
+          <input id="aiBase" class="ai-input" placeholder="https://your-endpoint/v1" />
+        </label>
+        <label class="ai-field">模型名（Model）
+          <input id="aiModel" class="ai-input" placeholder="deepseek-chat" />
+        </label>
+        <label class="ai-field">API Key
+          <input id="aiKey" class="ai-input" type="password" placeholder="sk-..." />
+        </label>
+        <div class="ai-actions">
+          <button id="aiSave" class="primary-btn">保存并开启</button>
+          <button id="aiClear" class="ghost-btn">清除 Key（退回启发式）</button>
+        </div>
+        <div class="ai-help">
+          <b>如何获取 Key：</b>
+          <ul>
+            <li><b>DeepSeek</b>：登录 platform.deepseek.com → 右上角「API Keys」→ 创建 Key（便宜、国内直连，推荐）</li>
+            <li><b>OpenAI</b>：platform.openai.com → API Keys → Create（需海外网络）</li>
+            <li><b>Kimi / 智谱 / 通义</b>：各自开放平台控制台创建 Key，国内可用</li>
+          </ul>
+          <p>把 Key 粘贴到上方保存即可。若不填 Key，站点继续使用内置启发式批改，功能不受影响。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 雅思词伙弹窗 -->
+  <div id="cihuoModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>🔗 雅思词伙 Colocations <small>来源《手把手教你雅思词伙 2.0》(顾家北) · 用于用词提升</small></h3>
+        <button class="modal-x" data-close="cihuoModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="ai-note">词伙 = 话题相关、自然搭配的多词组合。批改时若你的作文命中基础表达，会用蓝色「词伙」下划线提示升级（见批改稿）。</p>
+        <div class="cat-tabs" id="cihuoTabs"></div>
+        <div id="cihuoBody" class="cihuo-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simon 范文弹窗 -->
+  <div id="simonModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>📜 Simon 雅思范文 (Band 9) <small>前雅思考官 Simon Corcoran · 批改后范文对照</small></h3>
+        <button class="modal-x" data-close="simonModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="bank-filter">
+          <select id="simonType" class="bank-select">
+            <option value="">全部</option>
+            <option value="task2">Task 2 大作文</option>
+            <option value="task1">Task 1 小作文</option>
+          </select>
+          <span id="simonCount" class="bank-date"></span>
+        </div>
+        <div id="simonList" class="simon-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 小作文图库弹窗 -->
+  <div id="galleryModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>🖼️ 小作文真题图库 <small>2020–2026 真题截图 · 仅作素材参考，你的题目可不同于此</small></h3>
+        <button class="modal-x" data-close="galleryModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="ai-note">点击任一张图即可作为本次小作文题目载入。注意：你实际粘贴作答的题目未必在此图库内，图库只是扩充素材、帮助预判图表类型与用词。</p>
+        <div id="galleryGrid" class="gallery-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/bank.js"></script>
+  <script src="js/ielts_material.js"></script>
+  <script src="js/aeas.js"></script>
+  <script src="js/toefl.js"></script>
+  <script src="js/pet.js"></script>
+  <script src="js/ket.js"></script>
+  <script src="js/gaokao.js"></script>
+  <script src="js/cihuo.js"></script>
+  <script src="js/simon.js"></script>
+  <script src="js/task1_gallery.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
