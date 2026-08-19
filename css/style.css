@@ -331,6 +331,11 @@ textarea:focus { border-color: var(--haze-500); }
 .simon-title { font-weight: 600; font-size: 14px; margin-bottom: 8px; line-height: 1.5; }
 .simon-text { font-size: 13px; color: var(--ink); white-space: pre-wrap; line-height: 1.7; max-height: 320px; overflow-y: auto; background: var(--haze-50); padding: 10px; border-radius: 8px; }
 
+/* ---- 官方考官范文弹窗 ---- */
+.simon-item.examiner { border-left: 4px solid #b8860b; }
+.simon-item.examiner .simon-title { color: #7a5c00; }
+.simon-tip { font-size: 12.5px; color: #7a5c00; background: #fdf6e3; border: 1px dashed #d4b96a; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; line-height: 1.6; white-space: pre-wrap; }
+
 /* ---- 小作文图库弹窗 ---- */
 .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-height: 64vh; overflow-y: auto; padding-right: 6px; }
 .gal-item { position: relative; border: 1px solid var(--haze-100); border-radius: 10px; overflow: hidden; cursor: pointer; background: #fff; transition: all 0.15s; }

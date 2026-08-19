@@ -36,6 +36,7 @@
         <button id="materialBtn" class="tool-btn">📝 写作语言素材</button>
         <button id="cihuoBtn" class="tool-btn">🔗 雅思词伙</button>
         <button id="simonBtn" class="tool-btn">📜 Simon 范文</button>
+        <button id="examinerBtn" class="tool-btn">🏅 考官范文</button>
         <button id="aiBtn" class="tool-btn">⚙️ AI 精批设置</button>
       </div>
       <p class="side-foot">列表持续扩充中 · 在此对话框告知即可加入</p>
@@ -415,6 +416,27 @@
     </div>
   </div>
 
+  <!-- 考官范文弹窗 -->
+  <div id="examinerModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>🏅 官方考官范文 (Band 9) <small>考官亲写示范文 · 题目与范文一一对应 · 仅 IELTS</small></h3>
+        <button class="modal-x" data-close="examinerModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="bank-filter">
+          <select id="examinerType" class="bank-select">
+            <option value="">全部</option>
+            <option value="task2">Task 2 大作文</option>
+            <option value="task1">Task 1 小作文</option>
+          </select>
+          <span id="examinerCount" class="bank-date"></span>
+        </div>
+        <div id="examinerList" class="simon-list"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- 小作文图库弹窗 -->
   <div id="galleryModal" class="modal hidden">
     <div class="modal-box wide">
@@ -439,6 +461,7 @@
   <script src="js/gaokao.js"></script>
   <script src="js/cihuo.js"></script>
   <script src="js/simon.js"></script>
+  <script src="js/examiner.js"></script>
   <script src="js/task1_gallery.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -124,6 +124,11 @@
     simonType: document.getElementById("simonType"),
     simonCount: document.getElementById("simonCount"),
     simonList: document.getElementById("simonList"),
+    examinerBtn: document.getElementById("examinerBtn"),
+    examinerModal: document.getElementById("examinerModal"),
+    examinerType: document.getElementById("examinerType"),
+    examinerCount: document.getElementById("examinerCount"),
+    examinerList: document.getElementById("examinerList"),
     galleryModal: document.getElementById("galleryModal"),
     galleryGrid: document.getElementById("galleryGrid")
   };
@@ -1829,6 +1834,25 @@
     }).join("");
   }
 
+  // ---------- 官方考官范文弹窗 ----------
+  function renderExaminer() {
+    var typeF = el.examinerType.value;
+    var all = window.EXAMINER_ESSAYS || [];
+    var list = all.filter(function (e) { return !typeF || e.type === typeF; });
+    el.examinerCount.textContent = "共 " + all.length + " 篇 · 命中 " + list.length;
+    if (!list.length) { el.examinerList.innerHTML = '<div class="bank-empty">无匹配范文。</div>'; return; }
+    el.examinerList.innerHTML = list.map(function (e, i) {
+      var meta = (e.band ? "Band " + e.band + " · " : "") + (e.words ? e.words + " words" : "");
+      var tipHtml = e.tip ? '<div class="simon-tip">💡 ' + esc(e.tip) + '</div>' : "";
+      return '<div class="simon-item examiner">' +
+        '<div class="simon-meta"><span class="bank-tag ' + (e.type === "task1" ? "t1" : "t2") + '">' + (e.type === "task1" ? "Task 1" : "Task 2") + '</span>' +
+        '<span class="bank-tag sub">' + esc(e.subtype) + '</span>' + (meta ? '<span class="bank-date">' + meta + '</span>' : "") + '</div>' +
+        '<div class="simon-title">' + esc(e.title) + '</div>' +
+        tipHtml +
+        '<div class="simon-text">' + esc(e.text) + '</div></div>';
+    }).join("");
+  }
+
   // ---------- 小作文图库弹窗 ----------
   function renderGallery() {
     var imgs = window.TASK1_GALLERY || [];
@@ -2450,6 +2474,8 @@
   el.toeflBankSearch.addEventListener("input", renderToeflBank);
   el.toeflBankType.addEventListener("change", renderToeflBank);
   el.simonType.addEventListener("change", renderSimon);
+  el.examinerBtn.addEventListener("click", function () { renderExaminer(); openModal("examinerModal"); });
+  el.examinerType.addEventListener("change", renderExaminer);
   // 图片题目
   el.pickImgBtn.addEventListener("click", function () { el.imgFile.click(); });
   el.imgFile.addEventListener("change", function () { if (el.imgFile.files[0]) handleImageFile(el.imgFile.files[0]); });
