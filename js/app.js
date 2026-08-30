@@ -138,6 +138,15 @@
     sharedList: document.getElementById("sharedList"),
     sharedCount: document.getElementById("sharedCount"),
     sharedRefresh: document.getElementById("sharedRefresh"),
+    // 激活充值
+    payBtn: document.getElementById("payBtn"),
+    payQuota: document.getElementById("payQuota"),
+    payModal: document.getElementById("payModal"),
+    payQuotaNum: document.getElementById("payQuotaNum"),
+    payBuyBtn: document.getElementById("payBuyBtn"),
+    payCodeInput: document.getElementById("payCodeInput"),
+    payActivateBtn: document.getElementById("payActivateBtn"),
+    payStatus: document.getElementById("payStatus"),
     galleryModal: document.getElementById("galleryModal"),
     galleryGrid: document.getElementById("galleryGrid")
   };
@@ -1933,6 +1942,56 @@
     });
   }
 
+  // ---------- 激活充值 ----------
+  function updatePayUI() {
+    if (typeof PayGate === "undefined" || !el.payBtn) return;
+    var n = PayGate.remaining();
+    el.payQuota.textContent = "余 " + n + " 次";
+    el.payQuota.classList.toggle("low", n <= 1);
+    if (el.payQuotaNum) el.payQuotaNum.textContent = String(n);
+  }
+
+  function payStatusMsg(kind, text) {
+    if (!el.payStatus) return;
+    el.payStatus.className = "pay-status " + (kind || "");
+    el.payStatus.textContent = text || "";
+  }
+
+  function openPayModal() {
+    payStatusMsg("", "");
+    updatePayUI();
+    openModal("payModal");
+    if (el.payCodeInput) setTimeout(function () { el.payCodeInput.focus(); }, 100);
+  }
+
+  function handleActivate() {
+    if (typeof PayGate === "undefined") return;
+    var code = (el.payCodeInput.value || "").trim();
+    if (!code) { payStatusMsg("err", "请输入激活码"); return; }
+    el.payActivateBtn.disabled = true;
+    var btnText = el.payActivateBtn.textContent;
+    el.payActivateBtn.textContent = "⏳ 激活中…";
+    PayGate.activate(code).then(function (remainingN) {
+      payStatusMsg("ok", "✅ 激活成功！已到账 " + PAY_CONFIG.usesPerPack + " 次批改，当前剩余 " + remainingN + " 次");
+      el.payCodeInput.value = "";
+      updatePayUI();
+    }).catch(function (e) {
+      payStatusMsg("err", (e && e.message) ? e.message : "激活失败，请稍后重试");
+    }).then(function () {
+      el.payActivateBtn.disabled = false;
+      el.payActivateBtn.textContent = btnText;
+    });
+  }
+
+  function handleBuy() {
+    var url = (typeof PAY_CONFIG !== "undefined" && PAY_CONFIG.shopUrl) || "";
+    if (url) {
+      window.open(url, "_blank", "noopener");
+    } else {
+      alert("购买通道即将开放。\n\n如急需激活，请联系站长（微信/邮箱见购买页说明）。");
+    }
+  }
+
   function loadSharedExamOptions() {
     if (sharedExamsLoaded) return;
     var actives = (window.EXAMS || []).filter(function (x) { return x.active; });
@@ -2254,6 +2313,13 @@
     var essay = el.essay.value.trim();
     if (essay.length < 20) { alert("请先粘贴一段完整作答（至少 20 词）。"); return; }
 
+    // 付费门控：无剩余次数时弹出充值窗
+    if (typeof PayGate !== "undefined" && !PayGate.canUse()) {
+      openPayModal();
+      payStatusMsg("err", "免费体验次数已用完，购买激活码即可继续（¥9.9 / 10 次）");
+      return;
+    }
+
     // 先确定题目文本（图片模式下取图注，文字模式下取题目框）
     var promptText = promptMode === "image" ? (el.imgCaption.value || "") : el.prompt.value;
 
@@ -2343,6 +2409,10 @@
     if (aiConfig && aiConfig.key) {
       runAI(essay, promptText, current.name, isAeas, isToefl ? current.type : null, isPet ? current.type : null, isKet ? current.type : null);
     }
+
+    // 本次批改计费（免费次数用完后扣付费次数）
+    if (typeof PayGate !== "undefined") PayGate.consume();
+    updatePayUI();
   }
 
   // ---------- AEAS 审题分析 ----------
@@ -2627,6 +2697,13 @@
   el.examinerBtn.addEventListener("click", function () { renderExaminer(); openModal("examinerModal"); });
   el.sharedBtn.addEventListener("click", function () { loadSharedExamOptions(); refreshSharedList(false); openModal("sharedModal"); });
   el.shareBtn.addEventListener("click", shareCurrentCorrection);
+  el.payBtn.addEventListener("click", openPayModal);
+  el.payActivateBtn.addEventListener("click", handleActivate);
+  el.payBuyBtn.addEventListener("click", handleBuy);
+  el.payCodeInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") handleActivate();
+  });
+  updatePayUI();
   el.sharedSearch.addEventListener("input", renderSharedList);
   el.sharedExam.addEventListener("change", renderSharedList);
   el.sharedRefresh.addEventListener("click", function () { refreshSharedList(true); });
