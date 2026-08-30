@@ -37,6 +37,7 @@
         <button id="cihuoBtn" class="tool-btn">🔗 雅思词伙</button>
         <button id="simonBtn" class="tool-btn">📜 Simon 范文</button>
         <button id="examinerBtn" class="tool-btn">🏅 考官范文</button>
+        <button id="sharedBtn" class="tool-btn">🤝 共享批改库</button>
         <button id="aiBtn" class="tool-btn">⚙️ AI 精批设置</button>
       </div>
       <p class="side-foot">列表持续扩充中 · 在此对话框告知即可加入</p>
@@ -121,6 +122,10 @@
             <h3 class="sec-title">官方评分标准</h3>
             <div id="bandRef" class="band-ref"></div>
           </div>
+        </div>
+
+        <div class="share-row">
+          <button id="shareBtn" class="share-btn">🤝 分享我的批改，帮后来的同学</button>
         </div>
 
         <button id="resetBtn" class="ghost-btn">重新批改</button>
@@ -289,7 +294,7 @@
   <div id="toeflBankModal" class="modal hidden">
     <div class="modal-box wide">
       <div class="modal-head">
-        <h3>🇺🇸 托福写作真题题库 <small>2026 新制 · 学术讨论 + 邮件写作</small></h3>
+        <h3>🇺🇸 托福写作真题题库 <small>2026 新制 · 学术讨论（含机经真题）+ 邮件写作</small></h3>
         <button class="modal-x" data-close="toeflBankModal">✕</button>
       </div>
       <div class="modal-body">
@@ -298,11 +303,33 @@
           <select id="toeflBankType" class="bank-select">
             <option value="">全部题型</option>
             <option value="academic">学术讨论</option>
+            <option value="wad">学术讨论·机经真题</option>
             <option value="email">邮件写作</option>
           </select>
           <span class="bank-count" id="toeflBankCount"></span>
         </div>
         <div class="bank-list" id="toeflBankList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 共享批改库弹窗 -->
+  <div id="sharedModal" class="modal hidden">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>🤝 共享批改库 <small>来自其他用户的真实作答与批改 · 每条都是匿名公开记录</small></h3>
+        <button class="modal-x" data-close="sharedModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="bank-bar">
+          <input type="text" id="sharedSearch" class="bank-search" placeholder="搜作文内容关键词…">
+          <select id="sharedExam" class="bank-select">
+            <option value="">全部考试</option>
+          </select>
+          <button id="sharedRefresh" class="tool-btn small">🔄 刷新</button>
+          <span class="bank-count" id="sharedCount"></span>
+        </div>
+        <div class="bank-list" id="sharedList"></div>
       </div>
     </div>
   </div>
@@ -456,12 +483,14 @@
   <script src="js/ielts_material.js"></script>
   <script src="js/aeas.js"></script>
   <script src="js/toefl.js"></script>
+  <script src="js/toefl_wad.js"></script>
   <script src="js/pet.js"></script>
   <script src="js/ket.js"></script>
   <script src="js/gaokao.js"></script>
   <script src="js/cihuo.js"></script>
   <script src="js/simon.js"></script>
   <script src="js/examiner.js"></script>
+  <script src="js/shared.js"></script>
   <script src="js/task1_gallery.js"></script>
   <script src="js/app.js"></script>
 </body>

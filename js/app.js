@@ -129,6 +129,15 @@
     examinerType: document.getElementById("examinerType"),
     examinerCount: document.getElementById("examinerCount"),
     examinerList: document.getElementById("examinerList"),
+    // 共享批改库
+    shareBtn: document.getElementById("shareBtn"),
+    sharedBtn: document.getElementById("sharedBtn"),
+    sharedModal: document.getElementById("sharedModal"),
+    sharedSearch: document.getElementById("sharedSearch"),
+    sharedExam: document.getElementById("sharedExam"),
+    sharedList: document.getElementById("sharedList"),
+    sharedCount: document.getElementById("sharedCount"),
+    sharedRefresh: document.getElementById("sharedRefresh"),
     galleryModal: document.getElementById("galleryModal"),
     galleryGrid: document.getElementById("galleryGrid")
   };
@@ -1540,16 +1549,20 @@
     var typeF = el.toeflBankType.value;
     var all = [];
 
-    // Merge academic and email prompts
+    // Merge academic (原创 + 机经真题) and email prompts
     (window.TOEFL_ACADEMIC || []).forEach(function (a, i) {
-      all.push({ _type: "academic", _idx: i, topic: a.topic, category: a.category, professor: a.professor, question: a.question, studentA: a.studentA, studentB: a.studentB });
+      all.push({ _type: "academic", _src: "orig", _idx: i, topic: a.topic, category: a.category, professor: a.professor, question: a.question, studentA: a.studentA, studentB: a.studentB, difficulty: "", date: "" });
+    });
+    (window.TOEFL_WAD_ACADEMIC || []).forEach(function (w, i) {
+      all.push({ _type: "academic", _src: "wad", _idx: i, topic: w.topic, category: w.category, professor: w.professor, question: w.question, studentA: w.studentA, studentB: w.studentB, difficulty: w.difficulty, date: w.date, frequency: w.frequency, categoryType: w.categoryType });
     });
     (window.TOEFL_EMAIL || []).forEach(function (e, i) {
-      all.push({ _type: "email", _idx: i, topic: e.type + " - " + e.recipient, category: e.typeEn, prompt: e.prompt, tone: e.tone, tips: e.tips });
+      all.push({ _type: "email", _src: "email", _idx: i, topic: e.type + " - " + e.recipient, category: e.typeEn, prompt: e.prompt, tone: e.tone, tips: e.tips });
     });
 
     var list = all.filter(function (x) {
-      if (typeF && x._type !== typeF) return false;
+      if (typeF === "wad" && x._src !== "wad") return false;
+      if (typeF && typeF !== "wad" && x._type !== typeF) return false;
       if (!search) return true;
       var hay = (x.topic + " " + (x.category || "") + " " + (x.question || x.prompt || "")).toLowerCase();
       return hay.indexOf(search) !== -1;
@@ -1559,12 +1572,19 @@
     if (!list.length) { el.toeflBankList.innerHTML = '<div class="bank-empty">未找到匹配的托福真题，换个关键词试试。</div>'; return; }
 
     el.toeflBankList.innerHTML = list.map(function (x) {
-      var tag = x._type === "academic" ? "学术讨论" : "邮件写作";
-      var tagClass = x._type === "academic" ? "bank-tag-academic" : "bank-tag-email";
+      var tag = x._src === "wad" ? "机经真题" : (x._type === "academic" ? "学术讨论" : "邮件写作");
+      var tagClass = x._src === "wad" ? "bank-tag-wad" : (x._type === "academic" ? "bank-tag-academic" : "bank-tag-email");
       var title = x._type === "academic" ? x.topic : x.topic;
       var body = x._type === "academic" ? x.question : x.prompt;
-      var meta = x._type === "academic" ? x.category + " · 教授: " + x.professor : x.tone;
-      return '<div class="toefl-item bank-item" data-type="' + x._type + '" data-idx="' + x._idx + '">' +
+      var meta;
+      if (x._src === "wad") {
+        meta = x.category + (x.categoryType ? " · " + x.categoryType : "") + " · " + x.difficulty + (x.date ? " · " + x.date : "") + (x.frequency ? " · 考 " + x.frequency + " 次" : "");
+      } else if (x._type === "academic") {
+        meta = x.category + " · 教授: " + x.professor;
+      } else {
+        meta = x.tone;
+      }
+      return '<div class="toefl-item bank-item" data-type="' + x._type + '" data-src="' + x._src + '" data-idx="' + x._idx + '">' +
         '<div class="bank-q-head"><span class="bank-tag ' + tagClass + '">' + tag + '</span> ' + esc(title) + '</div>' +
         '<div class="bank-q">' + esc(body.slice(0, 120)) + '...</div>' +
         '<div class="bank-q-meta">' + esc(meta) + '</div>' +
@@ -1574,19 +1594,33 @@
     Array.prototype.slice.call(el.toeflBankList.querySelectorAll(".toefl-item")).forEach(function (it) {
       it.addEventListener("click", function () {
         var type = it.getAttribute("data-type");
+        var src = it.getAttribute("data-src");
         var idx = parseInt(it.getAttribute("data-idx"), 10);
-        if (type === "academic") {
-          selectToeflQuestion("academic", idx);
-        } else {
-          selectToeflQuestion("email", idx);
-        }
+        selectToeflQuestion(type, idx, src);
       });
     });
   }
 
-  function selectToeflQuestion(type, idx) {
+  function selectToeflQuestion(type, idx, src) {
     var item;
-    if (type === "academic") {
+    if (type === "academic" && src === "wad") {
+      item = (window.TOEFL_WAD_ACADEMIC || [])[idx];
+      if (!item) return;
+      var head = "[TOEFL Academic Discussion · 机经真题]";
+      if (item.category) head += "\nTopic: " + item.category + (item.topic ? " · " + item.topic : "");
+      if (item.categoryType) head += "（" + item.categoryType + "）";
+      if (item.date) head += "\nDate: " + item.date;
+      var metaBits = [];
+      if (item.difficulty) metaBits.push("难度 " + item.difficulty);
+      if (item.frequency) metaBits.push("考过 " + item.frequency + " 次");
+      if (metaBits.length) head += " · " + metaBits.join(" · ");
+      var promptText = head + "\n\nProfessor " + (item.professor || "—") + ": " + item.question + "\n\n" +
+        item.studentA.name + ": " + item.studentA.view;
+      if (item.studentB && item.studentB.view) {
+        promptText += "\n\n" + item.studentB.name + ": " + item.studentB.view;
+      }
+      el.prompt.value = promptText;
+    } else if (type === "academic") {
       item = (window.TOEFL_ACADEMIC || [])[idx];
       if (!item) return;
       var promptText = "[TOEFL Academic Discussion]\nProfessor " + item.professor + ": " + item.question + "\n\n" +
@@ -1851,6 +1885,122 @@
         tipHtml +
         '<div class="simon-text">' + esc(e.text) + '</div></div>';
     }).join("");
+  }
+
+  // ---------- 共享批改库（GitHub 仓库存储） ----------
+  var sharedCache = [];        // 最近一次拉取的共享记录
+  var sharedExamsLoaded = false;
+
+  function shareCurrentCorrection() {
+    if (!(window.SharedStore && SharedStore.isConfigured())) {
+      alert("共享服务尚未配置。\n\n站长请打开 js/shared.js，按顶部注释填入 GitHub 数据仓库的 owner / repo / token（新建一个公开仓库 + 细粒度 token，免费）。");
+      return;
+    }
+    var essay = el.essay.value.trim();
+    if (!essay) { alert("当前没有可分享的作答。"); return; }
+
+    var promptText = promptMode === "image" ? (el.imgCaption.value || "") : el.prompt.value;
+    var scoreText = (el.scoreEst.innerText || el.scoreEst.textContent || "").trim();
+    var analysisText = (el.promptAnalysis.innerText || el.promptAnalysis.textContent || "").trim();
+    var words = (essay.match(/\S+/g) || []).length;
+
+    var ok = confirm("将公开分享以下内容（完全匿名，不含任何个人信息）：\n\n" +
+      "· 考试类型：" + current.name + "\n" +
+      "· 题目：" + (promptText ? promptText.slice(0, 60) + "…" : "（未填写）") + "\n" +
+      "· 作文全文：" + words + " 词\n" +
+      "· 评分与批改分析\n\n确认分享？");
+    if (!ok) return;
+
+    var btnOrig = el.shareBtn.textContent;
+    el.shareBtn.disabled = true;
+    el.shareBtn.textContent = "⏳ 分享中…";
+
+    SharedStore.share({
+      examId: current.id,
+      examName: current.name,
+      prompt: promptText,
+      essay: essay,
+      scoreText: scoreText,
+      analysisText: analysisText,
+      words: words
+    }).then(function () {
+      alert("✅ 已分享到公共批改库，感谢贡献！\n稍后在「🤝 共享批改库」中可见（刷新列表）。");
+    }).catch(function (e) {
+      alert("分享失败：" + (e && e.message ? e.message : "网络异常") + "\n请稍后重试。");
+    }).then(function () {
+      el.shareBtn.disabled = false;
+      el.shareBtn.textContent = btnOrig;
+    });
+  }
+
+  function loadSharedExamOptions() {
+    if (sharedExamsLoaded) return;
+    var actives = (window.EXAMS || []).filter(function (x) { return x.active; });
+    el.sharedExam.innerHTML = '<option value="">全部考试</option>' + actives.map(function (x) {
+      return '<option value="' + esc(x.id) + '">' + esc(x.name) + '</option>';
+    }).join("");
+    sharedExamsLoaded = true;
+  }
+
+  function renderSharedList() {
+    // 本地筛选（基于缓存），空关键词也走缓存
+    var search = (el.sharedSearch.value || "").trim().toLowerCase();
+    var examF = el.sharedExam.value;
+    var list = sharedCache.filter(function (r) {
+      if (examF && r.examId !== examF) return false;
+      if (!search) return true;
+      var hay = ((r.examName || "") + " " + (r.prompt || "") + " " + (r.essay || "") + " " + (r.scoreText || "")).toLowerCase();
+      return hay.indexOf(search) !== -1;
+    });
+
+    el.sharedCount.textContent = "共 " + sharedCache.length + " 条 · 命中 " + list.length;
+    if (!list.length) {
+      el.sharedList.innerHTML = sharedCache.length ?
+        '<div class="bank-empty">没有匹配的记录，换个关键词试试。</div>' :
+        '<div class="bank-empty">' + (SharedStore.isConfigured() ? "还没有人分享过批改。批改完成后点「🤝 分享我的批改」，做第一个贡献者！" : "共享服务尚未配置（站长需在 js/shared.js 填入 GitHub 数据仓库配置）。") + '</div>';
+      return;
+    }
+
+    el.sharedList.innerHTML = list.map(function (r) {
+      var d = r.createdAt ? new Date(r.createdAt) : null;
+      var dateStr = d && !isNaN(d.getTime()) ? (d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2)) : "";
+      var scoreBrief = (r.scoreText || "").split("\n").filter(Boolean)[0] || "";
+      var promptBrief = r.prompt ? (r.prompt.length > 90 ? r.prompt.slice(0, 90) + "…" : r.prompt) : "（未附题目）";
+      return '<div class="shared-item" data-open="0">' +
+        '<div class="simon-meta"><span class="bank-tag wad">' + esc(r.examName || r.examId || "未知") + '</span>' +
+        (r.words ? '<span class="bank-date">' + r.words + ' 词</span>' : "") +
+        (dateStr ? '<span class="bank-date">' + dateStr + '</span>' : "") +
+        (scoreBrief ? '<span class="shared-score">' + esc(scoreBrief.slice(0, 40)) + '</span>' : "") + '</div>' +
+        '<div class="simon-title">' + esc(promptBrief) + '</div>' +
+        '<div class="shared-body">' +
+          '<div class="shared-block"><b>作答</b><div class="simon-text">' + esc(r.essay || "") + '</div></div>' +
+          (r.scoreText ? '<div class="shared-block"><b>评分</b><div class="simon-text">' + esc(r.scoreText) + '</div></div>' : "") +
+          (r.analysisText ? '<div class="shared-block"><b>批改分析</b><div class="simon-text">' + esc(r.analysisText) + '</div></div>' : "") +
+        '</div></div>';
+    }).join("");
+
+    Array.prototype.slice.call(el.sharedList.querySelectorAll(".shared-item")).forEach(function (it) {
+      it.addEventListener("click", function () {
+        var open = it.getAttribute("data-open") === "1";
+        it.setAttribute("data-open", open ? "0" : "1");
+        it.classList.toggle("open", !open);
+      });
+    });
+  }
+
+  function refreshSharedList(force) {
+    if (!(window.SharedStore && SharedStore.isConfigured())) { renderSharedList(); return; }
+    if (force) sharedCache = [];
+    if (sharedCache.length) { renderSharedList(); return; }
+    el.sharedCount.textContent = "加载中…";
+    SharedStore.fetchList({}).then(function (rows) {
+      sharedCache = rows;
+      renderSharedList();
+    }).catch(function (e) {
+      sharedCache = [];
+      el.sharedCount.textContent = "";
+      el.sharedList.innerHTML = '<div class="bank-empty">拉取失败：' + esc(e && e.message ? e.message : "网络异常") + '</div>';
+    });
   }
 
   // ---------- 小作文图库弹窗 ----------
@@ -2475,6 +2625,11 @@
   el.toeflBankType.addEventListener("change", renderToeflBank);
   el.simonType.addEventListener("change", renderSimon);
   el.examinerBtn.addEventListener("click", function () { renderExaminer(); openModal("examinerModal"); });
+  el.sharedBtn.addEventListener("click", function () { loadSharedExamOptions(); refreshSharedList(false); openModal("sharedModal"); });
+  el.shareBtn.addEventListener("click", shareCurrentCorrection);
+  el.sharedSearch.addEventListener("input", renderSharedList);
+  el.sharedExam.addEventListener("change", renderSharedList);
+  el.sharedRefresh.addEventListener("click", function () { refreshSharedList(true); });
   el.examinerType.addEventListener("change", renderExaminer);
   // 图片题目
   el.pickImgBtn.addEventListener("click", function () { el.imgFile.click(); });
