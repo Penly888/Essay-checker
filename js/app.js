@@ -147,6 +147,8 @@
     payCodeInput: document.getElementById("payCodeInput"),
     payActivateBtn: document.getElementById("payActivateBtn"),
     payStatus: document.getElementById("payStatus"),
+    payQrImg: document.getElementById("payQrImg"),
+    paySellerContact: document.getElementById("paySellerContact"),
     galleryModal: document.getElementById("galleryModal"),
     galleryGrid: document.getElementById("galleryGrid")
   };
@@ -1960,6 +1962,10 @@
   function openPayModal() {
     payStatusMsg("", "");
     updatePayUI();
+    if (el.paySellerContact) {
+      var contact = (typeof PAY_CONFIG !== "undefined" && PAY_CONFIG.sellerContact) || "";
+      el.paySellerContact.textContent = contact ? ("卖家联系方式：" + contact) : "";
+    }
     openModal("payModal");
     if (el.payCodeInput) setTimeout(function () { el.payCodeInput.focus(); }, 100);
   }
@@ -1984,11 +1990,22 @@
   }
 
   function handleBuy() {
-    var url = (typeof PAY_CONFIG !== "undefined" && PAY_CONFIG.shopUrl) || "";
-    if (url) {
-      window.open(url, "_blank", "noopener");
+    var c = (typeof PAY_CONFIG !== "undefined") ? PAY_CONFIG : {};
+    var contact = c.sellerContact || "";
+    if (el.paySellerContact) el.paySellerContact.textContent = contact ? ("卖家联系方式：" + contact) : "";
+    if (contact) {
+      var copied = false;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(contact).catch(function () {});
+          copied = true;
+        }
+      } catch (e) { /* clipboard 不可用则只提示 */ }
+      payStatusMsg("ok", "✅ 已复制卖家联系方式" + (copied ? "" : "（请手动复制）") + "，去微信添加卖家并发送付款截图，领取激活码");
+      alert("① 请复制以下联系方式，到微信添加卖家：\n" + contact + "\n\n② 把付款成功的截图发给卖家\n③ 卖家确认到账后，回复你一张激活码\n④ 回到本页输入激活码即可解锁 10 次");
     } else {
-      alert("购买通道即将开放。\n\n如急需激活，请联系站长（微信/邮箱见购买页说明）。");
+      payStatusMsg("err", "卖家联系方式待补充，请联系站长获取激活码");
+      alert("请联系站长（微信/QQ）发送付款截图领取激活码。");
     }
   }
 

@@ -349,9 +349,24 @@
         </div>
         <div class="pay-plan">
           <div class="pay-plan-price">¥9.9</div>
-          <div class="pay-plan-desc">充值卡 · 10 次批改<br><small>包含全部考试类型的完整批改（评分 + 逐句标注 + 提分建议）</small></div>
-          <button id="payBuyBtn" class="pay-buy-btn">去购买激活码</button>
+          <div class="pay-plan-desc">写作批改 · 10 次<br><small>含全部考试类型完整批改（评分 + 逐句标注 + 提分建议）</small></div>
         </div>
+        <!-- 扫码付款 + 人工发码 -->
+        <div class="pay-qr-box">
+          <div class="pay-qr-img-wrap">
+            <img id="payQrImg" class="pay-qr-img" src="img/wechat-pay.jpg" alt="微信收款码" title="微信扫码付款">
+            <span class="pay-qr-badge">微信支付</span>
+          </div>
+          <p class="pay-qr-hint">微信扫码付款 <b>¥9.9</b><small>（支持信用卡）</small></p>
+        </div>
+        <ol class="pay-steps">
+          <li>用微信扫上方收款码，支付 <b>¥9.9</b></li>
+          <li>付款后<b>截图</b>，加卖家微信把截图发过去</li>
+          <li>卖家确认到账后，回你一个激活码 <code>EC-XXXXX-XXXXX</code></li>
+          <li>把激活码填入下方输入框 → 立即到账 <b>10 次</b></li>
+        </ol>
+        <p class="pay-seller-contact" id="paySellerContact"></p>
+        <button id="payBuyBtn" class="pay-buy-btn pay-contact-btn">✉️ 我已付款 · 联系卖家领码</button>
         <div class="pay-activate">
           <label>已有激活码？在此输入</label>
           <div class="pay-activate-row">
@@ -360,7 +375,7 @@
           </div>
           <div id="payStatus" class="pay-status"></div>
         </div>
-        <p class="pay-note">· 新用户可免费体验 3 次<br>· 激活码一次性使用，激活后立即到账<br>· 遇到问题请联系卖家（购买页内有联系方式）</p>
+        <p class="pay-note">· 新用户可免费体验 3 次<br>· 激活码一次性使用，激活后立即到账<br>· 付款后请主动联系卖家领取激活码</p>
       </div>
     </div>
   </div>
