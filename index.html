@@ -351,22 +351,29 @@
           <div class="pay-plan-price">¥9.9</div>
           <div class="pay-plan-desc">写作批改 · 10 次<br><small>含全部考试类型完整批改（评分 + 逐句标注 + 提分建议）</small></div>
         </div>
-        <!-- 扫码付款 + 人工发码 -->
+        <!-- 扫码付款：自动发码（云函数）/ 人工发码（兜底），由 app.js 按配置切换 -->
         <div class="pay-qr-box">
           <div class="pay-qr-img-wrap">
-            <img id="payQrImg" class="pay-qr-img" src="img/wechat-pay.jpg" alt="微信收款码" title="微信扫码付款">
+            <img id="payQrImg" class="pay-qr-img" src="img/wechat-pay.jpg" alt="支付二维码" title="扫码付款">
             <span class="pay-qr-badge">微信支付</span>
           </div>
-          <p class="pay-qr-hint">微信扫码付款 <b>¥9.9</b><small>（支持信用卡）</small></p>
+          <p class="pay-qr-hint" id="payQrHint">微信扫码付款 <b>¥9.9</b></p>
+          <a id="payMobileLink" class="pay-mobile-link hidden" href="#" target="_blank" rel="noopener">📱 手机端点此打开支付页</a>
         </div>
-        <ol class="pay-steps">
+        <div id="payCloudStatus" class="pay-cloud-status hidden">
+          <span class="pay-cloud-dot"></span><span id="payCloudStatusText">正在生成支付二维码…</span>
+        </div>
+        <ol class="pay-steps" id="paySteps">
           <li>用微信扫上方收款码，支付 <b>¥9.9</b></li>
           <li>付款后<b>截图</b>，加卖家微信把截图发过去</li>
           <li>卖家确认到账后，回你一个激活码 <code>EC-XXXXX-XXXXX</code></li>
           <li>把激活码填入下方输入框 → 立即到账 <b>10 次</b></li>
         </ol>
         <p class="pay-seller-contact" id="paySellerContact"></p>
-        <button id="payBuyBtn" class="pay-buy-btn pay-contact-btn">✉️ 我已付款 · 联系卖家领码</button>
+        <div class="pay-btn-row">
+          <button id="payBuyBtn" class="pay-buy-btn pay-contact-btn">✉️ 我已付款 · 联系卖家领码</button>
+          <button id="payResumeBtn" class="pay-buy-btn pay-ghost-btn hidden">🔍 查询支付状态</button>
+        </div>
         <div class="pay-activate">
           <label>已有激活码？在此输入</label>
           <div class="pay-activate-row">
@@ -375,7 +382,7 @@
           </div>
           <div id="payStatus" class="pay-status"></div>
         </div>
-        <p class="pay-note">· 新用户可免费体验 3 次<br>· 激活码一次性使用，激活后立即到账<br>· 付款后请主动联系卖家领取激活码</p>
+        <p class="pay-note">· 新用户可免费体验 3 次<br>· 扫码支付成功后自动激活，无需加微信<br>· 激活码一次性使用，激活后立即到账<br>· 遇到问题可加微信 <b>1059398048</b> 反馈</p>
       </div>
     </div>
   </div>

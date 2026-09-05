@@ -4,3 +4,6 @@ node_modules/
 *.log
 test/
 essay-codes*
+
+# 支付云函数本地密钥
+cloud/.env.local

@@ -387,6 +387,22 @@ textarea:focus { border-color: var(--haze-500); }
 .pay-seller-contact { font-size: 12.5px; color: #b06a1e; font-weight: 600; margin: 0 0 8px; text-align: center; }
 .pay-contact-btn { display: block; width: 100%; margin-bottom: 16px; }
 
+/* ---- 云端自动发码 ---- */
+.pay-cloud-status { display: flex; align-items: center; gap: 8px; justify-content: center; font-size: 13px; font-weight: 600; margin: 4px 0 10px; color: var(--muted); }
+.pay-cloud-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; }
+.pay-cloud-status.waiting .pay-cloud-dot { background: #f5a623; animation: pay-pulse 1.2s ease-in-out infinite; }
+.pay-cloud-status.checking .pay-cloud-dot { background: #3498db; animation: pay-pulse 0.6s ease-in-out infinite; }
+.pay-cloud-status.ok { color: var(--ok); }
+.pay-cloud-status.ok .pay-cloud-dot { background: var(--ok); animation: none; }
+.pay-cloud-status.err { color: #c0392b; }
+.pay-cloud-status.err .pay-cloud-dot { background: #c0392b; animation: none; }
+@keyframes pay-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+.pay-mobile-link { display: block; text-align: center; font-size: 13.5px; font-weight: 700; color: #1a7f37; text-decoration: none; margin-top: 8px; padding: 8px; border: 1px dashed #1a7f37; border-radius: 8px; }
+.pay-mobile-link:hover { background: rgba(26, 127, 55, 0.06); }
+.pay-btn-row { display: flex; gap: 8px; margin-bottom: 16px; }
+.pay-btn-row .pay-buy-btn { flex: 1; }
+.pay-ghost-btn { background: #fff !important; color: #b06a1e !important; border: 1px solid #f0c98a !important; }
+
 /* ---- 小作文图库弹窗 ---- */
 .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-height: 64vh; overflow-y: auto; padding-right: 6px; }
 .gal-item { position: relative; border: 1px solid var(--haze-100); border-radius: 10px; overflow: hidden; cursor: pointer; background: #fff; transition: all 0.15s; }

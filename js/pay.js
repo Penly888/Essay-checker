@@ -1,19 +1,20 @@
 // ============================================================
-// 付费门控 — 按次充值（商家收款码 + 人工发码）
+// 付费门控 — 按次充值
 // ------------------------------------------------------------
-// 商业模式：
+// 商业模式（自动发码，主模式）：
 //   - 新用户免费体验 3 次批改（localStorage 计数）
-//   - 付费：用户扫微信商家收款码付款 ¥9.9 → 卖家人工发激活码
+//   - 付费：用户点购买 → 云函数（cloud/pay-function.js）向虎皮椒
+//     下单 → 展示支付二维码 → 支付成功回调云函数 → 自动发码 →
+//     前端轮询拿码并自动入账，全程无需加微信
 //   - 激活码校验：SHA-256 后比对 js/pay-codes.js 哈希库
-//   - 跨设备一次性使用：激活成功即把码哈希登记到
-//     essay-shared 数据仓库 data/used/ 目录（复用共享库
-//     的公开读 + token 写通道，零后端）
+//   - 跨设备一次性使用：发码时云端登记 data/used/<hash>.json
+// 兜底模式（PAY_CONFIG.cloudEndpoint 留空时）：
+//   - 用户扫微信商家收款码付款 → 卖家人工发码 → 手动激活
 //
 // 站长须知：
 //   - 明文码表在本地 essay-codes-batch1-500.txt（勿入库）
-//   - 收款码图片：img/wechat-pay.jpg
-//   - sellerContact：填卖家微信/QQ，买家付款截图后联系你领码
-//   - 卖出一码记得在明文码表里划掉，保持账实一致
+//   - 码池（CODES_JSON）部署在云函数环境变量里
+//   - 云函数部署步骤见 cloud/DEPLOY.md
 //   - 前端门控可被技术用户绕过（静态站固有局限），
 //     起步阶段以「方便付费」为主，不追求防破解
 // ============================================================
@@ -22,11 +23,16 @@ var PAY_CONFIG = {
   freeUses: 3,           // 新用户免费次数
   usesPerPack: 10,       // 每个激活码包含的批改次数
   priceText: "9.9 元",   // 展示用价格文案
-  payQr: "img/wechat-pay.jpg",  // 微信商家收款码图片
-  sellerContact: "1059398048",  // 卖家微信，买家付款后联系领码
+  payQr: "img/wechat-pay.jpg",  // 兜底：微信商家收款码图片（人工发码模式）
+  sellerContact: "1059398048",  // 兜底：卖家微信（人工发码模式 / 售后联系）
   storageKey: "wc_pay_state_v1",
   // 已用码登记目录（essay-shared 仓库内）
-  usedDir: "used"
+  usedDir: "used",
+  // ---- 自动发码模式（虎皮椒 + 云函数）----
+  // 部署 cloud/pay-function.js 后把访问地址填到这里，
+  // 例如 "https://1234567890.ap-northeast-2.fcapp.app"
+  // 留空 = 人工发码模式（扫收款码 + 加微信领码）
+  cloudEndpoint: ""
 };
 
 var PayGate = (function () {
@@ -210,13 +216,159 @@ var PayGate = (function () {
     });
   }
 
+  // ---- 云端发码后的本地入账 ----
+  // 与 activate() 的区别：云端回调已把该码登记为已用，
+  // 这里只做格式 + 哈希校验 + 本设备防重复入账
+  function creditedList() {
+    try { return JSON.parse(localStorage.getItem("wc_pay_credited_v1") || "[]"); }
+    catch (e) { return []; }
+  }
+
+  function credit(input) {
+    var code = normalizeCode(input);
+    if (!code) return Promise.reject(new Error("激活码格式不对，应为 EC-XXXXX-XXXXX"));
+    var hashes = (typeof PAY_CODE_HASHES !== "undefined") ? PAY_CODE_HASHES : [];
+    var hash = codeHash(code);
+    if (hashes.indexOf(hash) === -1) {
+      return Promise.reject(new Error("激活码无效，请核对后重试（或联系卖家）"));
+    }
+    if (creditedList().indexOf(hash) !== -1) {
+      return Promise.resolve(remaining()); // 本设备已入过账，幂等返回
+    }
+    var s = loadState();
+    s.paid += PAY_CONFIG.usesPerPack;
+    s.packs += 1;
+    saveState(s);
+    try {
+      var list = creditedList();
+      list.push(hash);
+      localStorage.setItem("wc_pay_credited_v1", JSON.stringify(list));
+    } catch (e) {}
+    return Promise.resolve(remaining());
+  }
+
   return {
     sha256: sha256,
     remaining: remaining,
     canUse: canUse,
     consume: consume,
     activate: activate,
+    credit: credit,
     normalizeCode: normalizeCode,
     _loadState: loadState
+  };
+})();
+
+// ============================================================
+// 云端自动发码 — 虎皮椒下单 + 轮询订单 + 自动入账
+// 依赖 cloud/pay-function.js 部署后的访问地址
+// ============================================================
+var PayCloud = (function () {
+  "use strict";
+
+  var ORDERS_KEY = "wc_pay_last_orders_v1"; // 最多存最近 10 个订单号
+  var POLL_MS = 3000;
+  var POLL_MAX = 200; // 约 10 分钟
+
+  function endpoint() {
+    var e = PAY_CONFIG.cloudEndpoint || "";
+    return e ? String(e).replace(/\/+$/, "") : "";
+  }
+
+  function enabled() { return !!endpoint() && typeof fetch === "function"; }
+
+  function genOrderId() {
+    var t = Date.now().toString(36);
+    var r = Math.random().toString(36).slice(2, 8);
+    return "WC" + t + "-" + r;
+  }
+
+  function rememberOrder(orderId) {
+    try {
+      var list = JSON.parse(localStorage.getItem(ORDERS_KEY) || "[]");
+      list.unshift({ orderId: orderId, at: Date.now() });
+      localStorage.setItem(ORDERS_KEY, JSON.stringify(list.slice(0, 10)));
+    } catch (e) {}
+  }
+
+  function lastOrder() {
+    try {
+      var list = JSON.parse(localStorage.getItem(ORDERS_KEY) || "[]");
+      var o = list[0];
+      return (o && o.orderId) ? o.orderId : null;
+    } catch (e) { return null; }
+  }
+
+  // 下单：返回 Promise<{orderId, urlQrcode, url}>
+  function createOrder() {
+    var orderId = genOrderId();
+    return fetch(endpoint() + "/order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId: orderId })
+    }).then(function (res) {
+      if (!res.ok) throw new Error("下单请求失败（" + res.status + "）");
+      return res.json();
+    }).then(function (data) {
+      if (!data.ok) throw new Error(data.error || "下单失败，请稍后重试");
+      rememberOrder(orderId);
+      return { orderId: orderId, urlQrcode: data.urlQrcode || "", url: data.url || "" };
+    });
+  }
+
+  // 查询单次：返回 Promise<{status, code?}>
+  function fetchStatus(orderId) {
+    return fetch(endpoint() + "/status?orderId=" + encodeURIComponent(orderId) + "&t=" + Date.now())
+      .then(function (res) {
+        if (!res.ok) throw new Error("查询失败（" + res.status + "）");
+        return res.json();
+      }).then(function (data) {
+        if (!data.ok) throw new Error(data.error || "查询失败");
+        return { status: data.status, code: data.code || null, orderId: orderId };
+      });
+  }
+
+  // 轮询直到支付成功：onTick(statusObj) 每次回调，onDone(data) 成功回调
+  // 返回 stop 函数
+  function pollUntilPaid(orderId, onTick, onDone, onError) {
+    var n = 0;
+    var stopped = false;
+    var timer = null;
+    function tick() {
+      if (stopped) return;
+      n++;
+      fetchStatus(orderId).then(function (d) {
+        if (stopped) return;
+        if (typeof onTick === "function") onTick(d, n);
+        if (d.status === "paid" && d.code) {
+          stopped = true;
+          if (typeof onDone === "function") onDone(d);
+          return;
+        }
+        if (n >= POLL_MAX) {
+          stopped = true;
+          if (typeof onError === "function") onError(new Error("等待超时，请点击「查询支付状态」重试"));
+          return;
+        }
+        timer = setTimeout(tick, POLL_MS);
+      }).catch(function (e) {
+        if (stopped) return;
+        if (n >= POLL_MAX) { if (typeof onError === "function") onError(e); return; }
+        timer = setTimeout(tick, POLL_MS * 2); // 网络抖动退避
+      });
+    }
+    timer = setTimeout(tick, 1500);
+    return function stop() {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+    };
+  }
+
+  return {
+    enabled: enabled,
+    createOrder: createOrder,
+    fetchStatus: fetchStatus,
+    pollUntilPaid: pollUntilPaid,
+    lastOrder: lastOrder
   };
 })();

@@ -148,6 +148,12 @@
     payActivateBtn: document.getElementById("payActivateBtn"),
     payStatus: document.getElementById("payStatus"),
     payQrImg: document.getElementById("payQrImg"),
+    payQrHint: document.getElementById("payQrHint"),
+    paySteps: document.getElementById("paySteps"),
+    payMobileLink: document.getElementById("payMobileLink"),
+    payCloudStatus: document.getElementById("payCloudStatus"),
+    payCloudStatusText: document.getElementById("payCloudStatusText"),
+    payResumeBtn: document.getElementById("payResumeBtn"),
     paySellerContact: document.getElementById("paySellerContact"),
     galleryModal: document.getElementById("galleryModal"),
     galleryGrid: document.getElementById("galleryGrid")
@@ -1959,6 +1965,126 @@
     el.payStatus.textContent = text || "";
   }
 
+  // 云端自动发码状态
+  var cloudPollStop = null;
+  var cloudOrderActive = null;   // 当前轮询的订单号
+
+  function cloudEnabled() {
+    return typeof PayCloud !== "undefined" && PayCloud.enabled();
+  }
+
+  function cloudMsg(kind, text) {
+    if (!el.payCloudStatus) return;
+    el.payCloudStatus.classList.remove("hidden");
+    el.payCloudStatus.className = "pay-cloud-status " + (kind || "");
+    if (el.payCloudStatusText) el.payCloudStatusText.textContent = text || "";
+  }
+
+  function stopCloudPoll() {
+    if (cloudPollStop) { cloudPollStop(); cloudPollStop = null; }
+  }
+
+  // 云端模式 UI 初始化：隐藏人工发码元素
+  function setupCloudUI() {
+    if (el.payQrImg) el.payQrImg.removeAttribute("src");
+    if (el.paySteps) el.paySteps.classList.add("hidden");
+    if (el.payQrHint) el.payQrHint.textContent = "微信扫码支付 ¥9.9 · 支付后自动激活";
+    if (el.payBuyBtn) {
+      el.payBuyBtn.textContent = "🔄 刷新支付二维码";
+      el.payBuyBtn.classList.remove("pay-contact-btn");
+      el.payBuyBtn.classList.add("pay-ghost-btn");
+    }
+    if (el.paySellerContact) {
+      el.paySellerContact.textContent = "支付遇到问题？加微信 " + (PAY_CONFIG.sellerContact || "站长") + " 人工处理";
+    }
+    if (el.payResumeBtn) el.payResumeBtn.classList.remove("hidden");
+  }
+
+  function isMobileUa() {
+    return /Mobi|Android|iPhone|iPad|HarmonyOS/i.test(navigator.userAgent || "");
+  }
+
+  // 发起云端支付：下单 → 展示二维码 → 轮询 → 自动入账
+  function startCloudPay(resumeOrderId) {
+    stopCloudPoll();
+    cloudMsg("", resumeOrderId ? "正在查询订单支付状态…" : "正在生成支付二维码…");
+    payStatusMsg("", "");
+
+    var run = function (orderData) {
+      // 展示二维码 / 手机端跳转链接
+      if (el.payQrImg) {
+        if (orderData.urlQrcode) el.payQrImg.src = orderData.urlQrcode;
+        else el.payQrImg.src = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+      }
+      if (el.payMobileLink) {
+        if (isMobileUa() && orderData.url) {
+          el.payMobileLink.href = orderData.url;
+          el.payMobileLink.classList.remove("hidden");
+        } else {
+          el.payMobileLink.classList.add("hidden");
+        }
+      }
+      cloudOrderActive = orderData.orderId;
+      cloudMsg("waiting", "等待支付中…扫码完成支付后会自动激活");
+
+      // 轮询订单状态（虎皮椒二维码 5 分钟有效，超时自动换新单）
+      var startAt = Date.now();
+      cloudPollStop = PayCloud.pollUntilPaid(orderData.orderId,
+        function tick(d, n) {
+          if (el.payModal.classList.contains("hidden")) { stopCloudPoll(); return; }
+          if (Date.now() - startAt > 4.5 * 60 * 1000 && d.status !== "paid") {
+            // 二维码快过期，自动换新单
+            cloudMsg("", "二维码已刷新，请扫描新的二维码支付");
+            startCloudPay();
+          }
+        },
+        function done(d) {
+          cloudPollStop = null;
+          cloudMsg("checking", "支付成功，正在自动激活…");
+          PayGate.credit(d.code).then(function (remainingN) {
+            cloudMsg("ok", "✅ 支付成功！已自动激活，剩余 " + remainingN + " 次批改");
+            payStatusMsg("ok", "✅ 已到账 " + PAY_CONFIG.usesPerPack + " 次批改，当前剩余 " + remainingN + " 次");
+            if (el.payQrImg) el.payQrImg.removeAttribute("src");
+            if (el.payMobileLink) el.payMobileLink.classList.add("hidden");
+            updatePayUI();
+          }).catch(function (e) {
+            cloudMsg("err", (e && e.message) || "自动激活失败");
+            payStatusMsg("err", "支付已成功但激活失败，请把激活码 " + d.code + " 填入下方输入框手动激活");
+            el.payCodeInput.value = d.code;
+          });
+        },
+        function error(e) {
+          cloudPollStop = null;
+          cloudMsg("err", (e && e.message) || "查询超时，请点击「查询支付状态」重试");
+        });
+    };
+
+    if (resumeOrderId) {
+      // 恢复模式：直接轮询既有订单
+      PayCloud.fetchStatus(resumeOrderId).then(function (d) {
+        if (d.status === "paid" && d.code) {
+          run({ orderId: d.orderId, urlQrcode: "", url: "" });
+        } else {
+          run({ orderId: resumeOrderId, urlQrcode: "", url: "" });
+          cloudMsg("waiting", "该订单尚未支付，请扫当前二维码或点击「刷新支付二维码」重新下单");
+        }
+      }).catch(function (e) {
+        cloudMsg("err", (e && e.message) || "查询失败，请稍后重试");
+      });
+      return;
+    }
+
+    PayCloud.createOrder().then(run).catch(function (e) {
+      cloudMsg("err", (e && e.message) || "下单失败，请稍后重试");
+    });
+  }
+
+  function handleResume() {
+    var last = PayCloud.lastOrder();
+    if (!last) { cloudMsg("err", "没有找到本地订单记录"); return; }
+    startCloudPay(last);
+  }
+
   function openPayModal() {
     payStatusMsg("", "");
     updatePayUI();
@@ -1967,7 +2093,11 @@
       el.paySellerContact.textContent = contact ? ("卖家联系方式：" + contact) : "";
     }
     openModal("payModal");
-    if (el.payCodeInput) setTimeout(function () { el.payCodeInput.focus(); }, 100);
+    if (cloudEnabled()) {
+      setupCloudUI();
+      // 有未完成订单先恢复，否则新下单
+      startCloudPay(PayCloud.lastOrder());
+    }
   }
 
   function handleActivate() {
@@ -1990,6 +2120,12 @@
   }
 
   function handleBuy() {
+    // 云端自动发码模式：刷新支付二维码（重新下单）
+    if (cloudEnabled()) {
+      startCloudPay();
+      return;
+    }
+    // 兜底：人工发码模式
     var c = (typeof PAY_CONFIG !== "undefined") ? PAY_CONFIG : {};
     var contact = c.sellerContact || "";
     if (el.paySellerContact) el.paySellerContact.textContent = contact ? ("卖家联系方式：" + contact) : "";
@@ -2717,6 +2853,7 @@
   el.payBtn.addEventListener("click", openPayModal);
   el.payActivateBtn.addEventListener("click", handleActivate);
   el.payBuyBtn.addEventListener("click", handleBuy);
+  if (el.payResumeBtn) el.payResumeBtn.addEventListener("click", handleResume);
   el.payCodeInput.addEventListener("keydown", function (e) {
     if (e.key === "Enter") handleActivate();
   });
