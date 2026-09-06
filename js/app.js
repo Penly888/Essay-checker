@@ -2860,6 +2860,11 @@
   el.sharedBtn.addEventListener("click", function () { loadSharedExamOptions(); refreshSharedList(false); openModal("sharedModal"); });
   el.shareBtn.addEventListener("click", shareCurrentCorrection);
   el.payBtn.addEventListener("click", openPayModal);
+  // 推广海报：侧边栏缩略图 → 大图弹窗 → 直达充值
+  var posterBtn = document.getElementById("posterBtn");
+  if (posterBtn) posterBtn.addEventListener("click", function () { openModal("posterModal"); });
+  var posterPayBtn = document.getElementById("posterPayBtn");
+  if (posterPayBtn) posterPayBtn.addEventListener("click", function () { closeModal("posterModal"); openPayModal(); });
   el.payActivateBtn.addEventListener("click", handleActivate);
   el.payBuyBtn.addEventListener("click", handleBuy);
   if (el.payResumeBtn) el.payResumeBtn.addEventListener("click", handleResume);

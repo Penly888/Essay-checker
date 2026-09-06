@@ -41,6 +41,10 @@
         <button id="payBtn" class="tool-btn pay-btn">💎 激活充值 <span id="payQuota" class="pay-quota"></span></button>
         <button id="aiBtn" class="tool-btn">⚙️ AI 精批设置</button>
       </div>
+      <div class="poster-promo" id="posterBtn" title="点击查看大图">
+        <img src="img/poster/essay-poster.png" alt="写作批改 ¥9.9 / 10 次推广海报" loading="lazy">
+        <div class="poster-promo-tag">¥9.9 · 10 次批改 · 自动发码</div>
+      </div>
       <p class="side-foot">列表持续扩充中 · 在此对话框告知即可加入</p>
     </aside>
 
@@ -383,6 +387,20 @@
           <div id="payStatus" class="pay-status"></div>
         </div>
         <p class="pay-note">· 新用户可免费体验 3 次<br>· 扫码支付成功后自动激活，无需加微信<br>· 激活码一次性使用，激活后立即到账<br>· 遇到问题可加微信 <b>1059398048</b> 反馈</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 推广海报弹窗 -->
+  <div id="posterModal" class="modal hidden">
+    <div class="modal-box poster-box">
+      <div class="modal-head">
+        <h3>🎯 森煜教育 · AI 写作批改 <small>¥9.9 / 10 次 · 扫码支付自动发码</small></h3>
+        <button class="modal-x" data-close="posterModal">✕</button>
+      </div>
+      <div class="modal-body poster-body">
+        <img class="poster-full" src="img/poster/essay-poster.png" alt="写作批改推广海报">
+        <button id="posterPayBtn" class="pay-buy-btn poster-pay-btn">💎 立即充值 ¥9.9 · 付款后自动到账</button>
       </div>
     </div>
   </div>
