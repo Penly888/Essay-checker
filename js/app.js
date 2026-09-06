@@ -2085,6 +2085,10 @@
     startCloudPay(last);
   }
 
+  function isWeChatBrowser() {
+    return /MicroMessenger/i.test(navigator.userAgent || "");
+  }
+
   function openPayModal() {
     payStatusMsg("", "");
     updatePayUI();
@@ -2093,6 +2097,11 @@
       el.paySellerContact.textContent = contact ? ("卖家联系方式：" + contact) : "";
     }
     openModal("payModal");
+    // 微信内无法唤起扫码支付（虎皮椒限制），引导用户用系统浏览器打开
+    if (isWeChatBrowser() && cloudEnabled()) {
+      payStatusMsg("err", "⚠️ 微信内暂不支持支付：请点右上角「···」→「在浏览器打开」（iPhone 选 Safari），再回来点充值，扫码支付后自动到账");
+      return;
+    }
     if (cloudEnabled()) {
       setupCloudUI();
       // 有未完成订单先恢复，否则新下单

@@ -43,7 +43,12 @@ const CFG = {
   ghBranch: process.env.GH_BRANCH || "main",
   siteUrl: process.env.SITE_URL || "https://penly888.github.io/Essay-checker/",
   allowOrigin: process.env.ALLOW_ORIGIN || "https://penly888.github.io",
+  // 回调/下单的公开基地址。SCF 函数 URL 事件不携带 host 头，必须显式配置，
+  // 否则 notify_url 会变成无效的相对路径 "/notify"，导致虎皮椒无法回调。
+  // 后续若绑定自定义域名(如 pay.shinewood.top)，只需改这里，不用改代码。
+  publicBase: process.env.PUBLIC_BASE || "https://1405758628-lsddru9fo0.ap-beijing.tencentscf.com",
   xhpDo: "https://api.xunhupay.com/payment/do.html",
+  supportContact: process.env.SUPPORT_CONTACT || "1059398048",
   usedDir: "data/used",
   ordersDir: "data/orders"
 };
@@ -205,6 +210,48 @@ async function deliverCode(orderId, txInfo) {
 
 function orderPath(orderId) { return CFG.ordersDir + "/" + orderId + ".json"; }
 
+// ---- /status 反查虎皮椒兜底（防回调丢失：已付但本地无订单时当场补发） ----
+const xhpQueryAt = {}; // 同一订单反查节流（前端 3s 轮询保护）
+async function xhpQuery(orderId) {
+  const params = {
+    appid: CFG.appid,
+    out_trade_order: orderId,
+    time: String(Math.floor(Date.now() / 1000)),
+    nonce_str: nonce()
+  };
+  params.hash = xhpHash(params, CFG.appsecret);
+  const body = Object.keys(params).map(k => k + "=" + encodeURIComponent(params[k])).join("&");
+  try {
+    const res = await withRetry(() => fetch("https://api.xunhupay.com/payment/query.html", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body
+    }), 2);
+    const j = await res.json().catch(() => ({}));
+    // 响应结构: {"errcode":0,"data":{status,total_amount,transaction_id,open_order_id,...}}
+    // 响应无 hash 签名；有则校验（服务器对服务器 HTTPS 调用）
+    if (!j || j.errcode !== 0 || !j.data) return null;
+    if (j.hash && xhpHash(j, CFG.appsecret) !== j.hash) return null;
+    return j.data;
+  } catch (e) { return null; }
+}
+async function statusFallback(orderId, baseHeaders) {
+  if (!CFG.appid || !CFG.appsecret) return null;
+  const now = Date.now();
+  if (xhpQueryAt[orderId] && now - xhpQueryAt[orderId] < 5000) return null;
+  xhpQueryAt[orderId] = now;
+  const data = await xhpQuery(orderId);
+  if (!data || data.status !== "OD") return null; // 未支付/查不到 → 视为 created
+  const r = await deliverCode(orderId, {
+    total_fee: data.total_amount, transaction_id: data.transaction_id,
+    open_order_id: data.open_order_id, status: "OD"
+  });
+  if (!r.ok || !r.code) return json(502, baseHeaders, { ok: false, error: "订单已支付但补发失败，请联系客服微信 " + CFG.supportContact });
+  return json(200, baseHeaders, { ok: true, status: "paid", code: r.code, orderId: orderId });
+
+  function json(status, h, obj) { return { status: status, headers: h, body: JSON.stringify(obj) }; }
+}
+
 // ---------------- 各端点处理 ----------------
 // 统一入口：返回 {status, type, body}
 async function handle(method, path, query, headers, bodyRaw) {
@@ -279,7 +326,11 @@ async function handle(method, path, query, headers, bodyRaw) {
     if (!/^[A-Za-z0-9_-]{6,64}$/.test(orderId)) return json(400, baseHeaders, { ok: false, error: "订单号格式不对" });
     const got = await ghGet(orderPath(orderId));
     if (got && got.error) return json(502, baseHeaders, { ok: false, error: "订单查询失败，请重试" });
-    if (!got) return json(200, baseHeaders, { ok: true, status: "created" });
+    if (!got) {
+      // 本地无订单（虎皮椒回调可能丢失）→ 反查虎皮椒，已付当场补发
+      const fb = await statusFallback(orderId, baseHeaders);
+      return fb || json(200, baseHeaders, { ok: true, status: "created" });
+    }
     const o = got.obj;
     if (o.status !== "paid") return json(200, baseHeaders, { ok: true, status: o.status || "created" });
     const code = decryptCode(o.enc);
@@ -328,9 +379,9 @@ function clientIp(headers) {
 }
 function publicBaseUrl(headers) {
   const host = headers["host"] || "";
-  if (!host) return "";
-  const proto = headers["x-forwarded-proto"] || "https";
-  return proto + "://" + host;
+  if (host) return (headers["x-forwarded-proto"] || "https") + "://" + host;
+  // 函数 URL 模式下无 host 头 → 回退到配置的公开基地址
+  return CFG.publicBase;
 }
 
 // ============================================================

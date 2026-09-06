@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1080px; height: 1920px; font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif; background: #fff; overflow: hidden; }
+
+  .poster { width: 1080px; height: 1920px; position: relative; display: flex; flex-direction: column; }
+
+  /* 顶部渐变 */
+  .head { width: 100%; height: 310px; background: linear-gradient(150deg, #6d7cff 0%, #8b7df0 45%, #b18be8 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; position: relative; }
+  .head::before { content:""; position:absolute; top:0; right:0; width:360px; height:360px; background: radial-gradient(circle at 15% 15%, rgba(255,255,255,.22) 0, rgba(255,255,255,0) 60%); }
+  .head h1 { color: #fff; font-size: 78px; font-weight: 800; letter-spacing: 6px; text-shadow: 0 3px 10px rgba(60,40,130,.25); }
+  .head .sub { color: #eef; font-size: 30px; margin-top: 18px; letter-spacing: 2px; }
+  .head .exams { color: #fff; font-size: 30px; margin-top: 20px; opacity: .96; font-weight: 600; }
+  .head .badge { margin-top: 22px; background: #ffd34d; color: #4a3b00; font-size: 26px; font-weight: 700; padding: 10px 30px; border-radius: 40px; box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+
+  /* 插画 */
+  .hero { width: 100%; height: 360px; display: flex; align-items: center; justify-content: center; background: #fdfbff; }
+  .hero img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 8px 20px rgba(80,80,150,.15)); }
+
+  /* 卖点列表 */
+  .features { width: 100%; padding: 6px 64px 0; }
+  .feat { display: flex; align-items: flex-start; margin-bottom: 20px; }
+  .feat .ck { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; background: #ff5a66; color: #fff; font-size: 22px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-right: 18px; margin-top: 2px; box-shadow: 0 2px 6px rgba(255,90,102,.4); }
+  .feat .txt { font-size: 30px; color: #333; line-height: 1.4; }
+  .feat .txt b { color: #d33a47; }
+
+  /* 价格条 */
+  .price { width: 92%; margin: 28px auto 0; border: 3px solid #ffb800; background: #fffdf3; border-radius: 20px; padding: 18px 34px; display: flex; align-items: center; justify-content: space-between; }
+  .price .p { display: flex; align-items: baseline; }
+  .price .yuan { color: #ea3a3a; font-size: 66px; font-weight: 800; }
+  .price .cny { color: #ea3a3a; font-size: 30px; font-weight: 700; margin-right: 6px; }
+  .price .per { font-size: 30px; color: #555; font-weight: 600; }
+  .price .free { background: #ffd34d; color: #4a3b00; font-size: 24px; font-weight: 700; padding: 8px 22px; border-radius: 30px; }
+
+  /* 二维码区 */
+  .qr-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .qr-box { border: 2px solid #e3e8f2; border-radius: 24px; padding: 26px 30px; background: #fff; box-shadow: 0 6px 24px rgba(80,90,160,.12); display: flex; flex-direction: column; align-items: center; }
+  .qr-box img { width: 380px; height: 380px; }
+  .qr-box .tip { margin-top: 20px; font-size: 30px; color: #4a90d9; font-weight: 700; letter-spacing: 2px; }
+
+  /* 底部 CTA：自动发码 */
+  .foot { padding-bottom: 44px; text-align: center; }
+  .foot .cta { background: linear-gradient(90deg, #ff6b6b, #ff8e3c); color: #fff; font-size: 34px; font-weight: 800; display: inline-block; padding: 16px 42px; border-radius: 50px; box-shadow: 0 6px 18px rgba(255,110,80,.4); letter-spacing: 3px; }
+  .foot .note { margin-top: 18px; font-size: 24px; color: #889; }
+  .foot .note b { color: #333; }
+  .foot .svc { margin-top: 12px; font-size: 22px; color: #aab; }
+</style>
+</head>
+<body>
+  <div class="poster">
+    <div class="head">
+      <h1>AI 英语写作批改</h1>
+      <div class="sub">英语作文 智能批改 · 提分利器</div>
+      <div class="exams">雅思 · 托福 · 高考 · PET · KET · AEAS</div>
+      <div class="badge">6 大考试 全覆盖</div>
+    </div>
+
+    <div class="hero">
+      <img src="Flat_modern_illustration_for_a_2026-09-05T07-32-36.png" alt="">
+    </div>
+
+    <div class="features">
+      <div class="feat"><div class="ck">✓</div><div class="txt">红笔逐句标注错误，<b>一眼看懂问题在哪</b></div></div>
+      <div class="feat"><div class="ck">✓</div><div class="txt"><b>精准评分</b> + 逐项提分建议，知道怎么改</div></div>
+      <div class="feat"><div class="ck">✓</div><div class="txt">考官范文 + 真题题库（雅思/托福/高考）</div></div>
+      <div class="feat"><div class="ck">✓</div><div class="txt">共享批改库，参考别人的真实高分修改</div></div>
+    </div>
+
+    <div class="price">
+      <div class="p"><span class="cny">¥</span><span class="yuan">9.9</span><span class="per">&nbsp;/ 10 次批改</span></div>
+      <div class="free">新用户免费 3 次</div>
+    </div>
+
+    <div class="qr-wrap">
+      <div class="qr-box">
+        <img src="site-qr.png" alt="">
+        <div class="tip">扫码立即体验</div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <div class="cta">扫码支付 · 自动发放激活码</div>
+      <div class="note">无需加微信 · <b>付款后自动到账</b> 10 次批改</div>
+      <div class="note svc">支付遇到问题？客服微信 1059398048</div>
+    </div>
+  </div>
+</body>
+</html>
