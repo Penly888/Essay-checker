@@ -13,7 +13,7 @@
 //
 // 站长须知：
 //   - 明文码表在本地 essay-codes-batch1-500.txt（勿入库）
-//   - 码池（CODES_JSON）部署在云函数环境变量里
+//   - 码池：codes.json 随云函数包部署（499 码，SCF 环境变量 4KB 放不下）
 //   - 云函数部署步骤见 cloud/DEPLOY.md
 //   - 前端门控可被技术用户绕过（静态站固有局限），
 //     起步阶段以「方便付费」为主，不追求防破解
@@ -29,10 +29,9 @@ var PAY_CONFIG = {
   // 已用码登记目录（essay-shared 仓库内）
   usedDir: "used",
   // ---- 自动发码模式（虎皮椒 + 云函数）----
-  // 部署 cloud/pay-function.js 后把访问地址填到这里，
-  // 例如 "https://1234567890.ap-northeast-2.fcapp.app"
+  // cloud/pay-function.js 部署在腾讯云 SCF（essay-pay 函数）
   // 留空 = 人工发码模式（扫收款码 + 加微信领码）
-  cloudEndpoint: ""
+  cloudEndpoint: "https://1405758628-lsddru9fo0.ap-beijing.tencentscf.com"
 };
 
 var PayGate = (function () {
