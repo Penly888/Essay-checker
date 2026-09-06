@@ -27,13 +27,14 @@
 "use strict";
 
 const crypto = require("crypto");
+const path = require("path");
 
 // ---------------- 配置 ----------------
 const CFG = {
   appid: process.env.XHP_APPID || "",
   appsecret: process.env.XHP_APPSECRET || "",
   ghToken: process.env.GH_TOKEN || "",
-  codes: parseCodes(process.env.CODES_JSON || ""),
+  codes: loadCodes(),
   paySecret: process.env.PAY_SECRET || "",
   amount: process.env.PAY_AMOUNT || "9.90",
   title: process.env.PAY_TITLE || "AI写作批改-10次",
@@ -52,6 +53,23 @@ function parseCodes(raw) {
     const arr = JSON.parse(raw);
     return Array.isArray(arr) ? arr.filter(c => /^EC-[A-Z0-9]{5}-[A-Z0-9]{5}$/.test(c)) : [];
   } catch (e) { return []; }
+}
+
+// 码池加载优先级：
+//   1. 环境变量 CODES_JSON（本地联调/测试码）
+//   2. 代码目录 codes.json（随函数包部署 —— 腾讯云 SCF 环境变量上限 4KB，
+//      500 个码放不下，明文码放函数包目录，私有不可下载）
+function loadCodes() {
+  const fromEnv = parseCodes(process.env.CODES_JSON || "");
+  if (fromEnv.length) return fromEnv;
+  try {
+    const p = path.join(__dirname, "codes.json");
+    if (require("fs").existsSync(p)) {
+      const arr = parseCodes(require("fs").readFileSync(p, "utf8"));
+      if (arr.length) return arr;
+    }
+  } catch (e) { /* fallthrough */ }
+  return [];
 }
 
 // ---------------- 虎皮椒签名 ----------------
@@ -337,15 +355,24 @@ async function aliHandler(req, res) {
   }
 }
 
-// ---- 腾讯云云函数 SCF（API 网关触发）----
+// ---- 腾讯云云函数 SCF（函数 URL / API 网关触发，事件格式相同）----
 async function tencentHandler(event) {
   try {
     const bodyRaw = (event.isBase64Encoded && event.body) ? Buffer.from(event.body, "base64").toString("utf8") : String(event.body || "");
     const query = {};
-    Object.keys(event.queryString || {}).forEach(k => { query[k] = event.queryString[k]; });
+    // 兼容 queryString 的 string 与多值两种格式
+    Object.keys(event.queryString || {}).forEach(k => {
+      const v = event.queryString[k];
+      query[k] = Array.isArray(v) ? v[0] : v;
+    });
     const headers = {};
     Object.keys(event.headers || {}).forEach(k => { headers[String(k).toLowerCase()] = event.headers[k]; });
-    const r = await handle(event.httpMethod, event.path, query, headers, bodyRaw);
+    // API 网关默认路径的 path 可能带发布环境前缀（/release/order），剥掉
+    let p = String(event.path || "/");
+    const stage = event.requestContext && event.requestContext.stage;
+    if (stage && p.indexOf("/" + stage + "/") === 0) p = p.slice(stage.length + 1);
+    if (p.indexOf("/" + stage) === 0 && p.length === stage.length + 1) p = "/";
+    const r = await handle(event.httpMethod, p, query, headers, bodyRaw);
     return { isBase64Encoded: false, statusCode: r.status, headers: r.headers, body: r.body };
   } catch (e) {
     return { isBase64Encoded: false, statusCode: 500, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ok: false, error: String(e && e.message) }) };

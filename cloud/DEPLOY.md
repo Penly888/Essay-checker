@@ -39,45 +39,65 @@ GitHub 仓库 essay-shared（零数据库）
 推荐 **阿里云函数计算 FC**（有每月免费额度，低流量基本 0 成本），
 腾讯云 SCF 也可以（低流量每月几毛钱）。
 
-### 阿里云 FC 3.0 部署（推荐）
+### 腾讯云 SCF 部署（已选定）
+
+> SCF 单函数环境变量总大小上限 4KB，500 个码的 CODES_JSON 放不下，
+> 码池改为 `cloud/codes.json` **随函数包一起部署**（函数代码私有不可下载，安全）。
+
+1. 打开 https://console.cloud.tencent.com/scf → 函数服务 → **新建**
+2. 创建方式：**自定义创建**
+   - 函数名称：`essay-pay`；地域：广州/上海任意
+   - 运行环境：**Nodejs18.15**（或 20）
+   - 内存：128MB；执行超时：**60 秒**（下单调虎皮椒 + 回调写 GitHub，留余量）
+   - 提交方法：**本地上传 zip 包** → 选 `cloud/scf-deploy.zip`
+     （zip 内含 pay-function.js + codes.json 两个文件，平级无目录）
+3. 高级配置 → 环境变量，逐个添加（值见 `cloud/.env.production`）：
+
+   | 变量 | 值 |
+   |---|---|
+   | `XHP_APPID` | 虎皮椒 appid |
+   | `XHP_APPSECRET` | 虎皮椒 appsecret（保密） |
+   | `GH_TOKEN` | essay-shared 写权限 token |
+   | `PAY_SECRET` | 32+ 位随机串（保密，加密订单里的激活码） |
+   | `SITE_URL` | `https://www.shinewood.top/` |
+   | `ALLOW_ORIGIN` | `https://www.shinewood.top` |
+
+   （PAY_AMOUNT/PAY_TITLE/GH_OWNER/GH_REPO/GH_BRANCH 有默认值，可不填）
+4. 函数代码确认入口：**函数管理 → 函数代码 → 配置**，
+   执行函数改为 `pay-function.main_handler`（默认 index.main_handler 是错的）
+5. 创建函数后：**函数管理 → 触发器（或"函数 URL"）** →
+   新建触发器 → 选 **函数 URL / API 网关触发器**，认证方式选**免鉴权**，
+   **勾选"集成响应"**（必须勾，否则浏览器收到的是 JSON 包裹层而非真实 HTTP 响应）
+6. 复制生成的 URL（形如 `https://xxx-xxx.apigw.tencentcs.com/api/xxx`
+   或 `https://xxx.tencentscf.com/`），浏览器访问 `<URL>/health` 返回 `ok` 即成功
+
+### 阿里云 FC 3.0 部署（备选）
 
 1. 注册阿里云账号，开通函数计算（搜索"函数计算"，开通按量付费，有免费额度）
 2. 控制台 → 函数计算 → 创建函数：
    - 运行环境：Node.js 18+；请求处理程序类型：**处理 HTTP 请求**
-   - 代码：把 `cloud/pay-function.js` 的内容粘贴进去（单文件，无依赖）
-3. 触发器/访问地址：函数详情 → 配置 → 触发器，使用默认的公网访问地址
-   （形如 `https://xxxxxx.cn-hangzhou.fcapp.app`），记下来
-4. 环境变量（函数配置 → 环境变量）逐个添加：
+   - 代码：zip 上传（pay-function.js + codes.json）
+3. 触发器/访问地址：使用默认公网访问地址（形如 `https://xxxxxx.cn-hangzhou.fcapp.app`）
+4. 环境变量同上表；验证 `<地址>/health` 返回 `ok`
 
-| 变量 | 值 | 说明 |
-|---|---|---|
-| `XHP_APPID` | 虎皮椒 appid | 第一步拿到 |
-| `XHP_APPSECRET` | 虎皮椒 appsecret | 第一步拿到，**保密** |
-| `GH_TOKEN` | `js/shared.js` 里拼出来的 token | essay-shared 写权限 |
-| `CODES_JSON` | 见下方生成命令 | **明文码池** |
-| `PAY_SECRET` | 任意 32+ 位随机串 | 加密订单里的激活码，**保密** |
-| `ALLOW_ORIGIN` | `https://penly888.github.io` | CORS |
-| `PAY_AMOUNT` | `9.90` | 可选，默认 9.90 |
-| `PAY_TITLE` | `AI写作批改-10次` | 可选 |
-
-5. 验证：浏览器打开 `https://<函数地址>/health`，返回 `ok` 即部署成功
-
-### 腾讯云 SCF 部署（备选）
-
-控制台 → 云函数 → 新建（Node.js 18+，HTTP 触发器，集成响应），
-粘贴 `cloud/pay-function.js`，配同样环境变量，使用 API 网关默认域名。
-
-## 第三步：生成 CODES_JSON（明文码池）
+## 码池 cloud/codes.json（明文码池，已 gitignore）
 
 ```bash
 cd /Users/penly/WorkBuddy/写作批改
-node -e "console.log(JSON.stringify(require('fs').readFileSync('/Users/penly/WorkBuddy/essay-codes-batch1-500.txt','utf8').trim().split('\n')))"
+# 从明文码表重新生成（自动排除带「已用」标记的人工发码）
+node -e "
+const fs=require('fs');
+const lines=fs.readFileSync('/Users/penly/Desktop/essay-codes-batch1-500.txt','utf8').split('\n').map(s=>s.trim()).filter(Boolean);
+const all=lines.filter(l=>/^EC-[A-Z0-9]{5}-[A-Z0-9]{5}$/.test(l));
+fs.writeFileSync('cloud/codes.json',JSON.stringify(all));
+console.log(all.length+' codes');
+"
+# 重打部署包
+cd cloud && zip -j scf-deploy.zip pay-function.js codes.json
 ```
 
-输出形如 `["EC-52T23-7U2R7","EC-..."]`，整段填入 `CODES_JSON` 环境变量。
-
-> 码池发完后（500 个全卖完），生成新批次码 + 哈希（js/pay-codes.js），
-> 更新码池环境变量即可。人工发过的码要保留在 used 目录（已自动标记，无需处理）。
+> 码池发完（499 个全卖完）后：生成新批次码+哈希（js/pay-codes.js）→
+> 重建 codes.json → 重新上传 zip 即可。人工发过的码保留 used 标记（已自动排除）。
 
 ## 第四步：联调验证（可选，5 分钟）
 

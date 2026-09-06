@@ -7,3 +7,7 @@ essay-codes*
 
 # 支付云函数本地密钥
 cloud/.env.local
+# 明文码池（随云函数包部署，严禁入库）
+cloud/codes.json
+cloud/.env.production
+cloud/scf-deploy.zip
